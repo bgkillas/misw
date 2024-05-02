@@ -30,15 +30,28 @@ fn main()
     stdout.execute(terminal::EnterAlternateScreen).unwrap();
     let mut args = args().collect::<Vec<String>>();
     args.remove(0);
+    let touch = !args.is_empty() && args[0] == "touch";
+    if touch
+    {
+        args.remove(0);
+    }
     let xb = if args.is_empty()
     {
         16
+    }
+    else if args[0] == "max"
+    {
+        termsize::get().unwrap().cols as usize / 3
     }
     else
     {
         args[0].parse::<usize>().unwrap_or(16)
     };
-    let yb = if args.len() <= 1
+    let yb = if !args.is_empty() && args[0] == "max"
+    {
+        termsize::get().unwrap().rows as usize
+    }
+    else if args.len() <= 1
     {
         16
     }
@@ -47,7 +60,11 @@ fn main()
         args[1].parse::<usize>().unwrap_or(16)
     };
     let bombs = (xb * yb)
-        / if args.len() <= 2
+        / if args.len() > 1 && args[0] == "max"
+        {
+            args[1].parse::<usize>().unwrap_or(4)
+        }
+        else if args.len() <= 2
         {
             4
         }
