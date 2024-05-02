@@ -8,6 +8,7 @@ use crossterm::{
     terminal, ExecutableCommand,
 };
 use std::{
+    env::args,
     io::{stdout, Write},
     process::exit,
 };
@@ -27,14 +28,39 @@ fn main()
     stdout.execute(cursor::Hide).unwrap();
     stdout.execute(event::EnableMouseCapture).unwrap();
     stdout.execute(terminal::EnterAlternateScreen).unwrap();
-    let xb = 16;
-    let yb = 16;
-    let bombs = 64;
-    let min = u64::MAX / ((xb * yb) as u64 / bombs);
+    let mut args = args().collect::<Vec<String>>();
+    args.remove(0);
+    let xb = if args.is_empty()
+    {
+        16
+    }
+    else
+    {
+        args[0].parse::<usize>().unwrap_or(16)
+    };
+    let yb = if args.len() <= 1
+    {
+        16
+    }
+    else
+    {
+        args[1].parse::<usize>().unwrap_or(16)
+    };
+    let bombs = (xb * yb)
+        / if args.len() <= 2
+        {
+            4
+        }
+        else
+        {
+            args[1].parse::<usize>().unwrap_or(4)
+        };
+    let min = u64::MAX / ((xb * yb) as u64 / bombs as u64);
     loop
     {
         print!("\x1b[H\x1b[J");
         let mut board = vec![vec![Point::Close; yb]; xb];
+        let mut count = 0;
         for row in board.iter_mut()
         {
             for point in row.iter_mut()
@@ -44,17 +70,23 @@ fn main()
                     *point = Point::Bomb;
                 }
                 print!(" # ");
+                count += 1;
+                if count == xb
+                {
+                    println!("\x1b[G");
+                    count = 0;
+                }
             }
-            println!("\x1b[G")
         }
+        stdout.flush().unwrap();
         loop
         {
             let (x, y, _) = read_input();
-            if x <= xb && y <= yb
+            if x < xb && y < yb
             {
-                for x in x.saturating_sub(1)..=(x + 1).min(xb)
+                for x in x.saturating_sub(1)..=(x + 1).min(xb - 1)
                 {
-                    for y in y.saturating_sub(1)..=(y + 1).min(yb)
+                    for y in y.saturating_sub(1)..=(y + 1).min(yb - 1)
                     {
                         board[x][y] = Point::Open;
                     }
@@ -67,7 +99,7 @@ fn main()
         loop
         {
             let (x, y, mb) = read_input();
-            if x <= xb && y <= yb
+            if x < xb && y < yb
             {
                 match mb
                 {
