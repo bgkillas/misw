@@ -11,6 +11,7 @@ use std::{
     env::args,
     io::{stdout, Write},
     process::exit,
+    time::Instant,
 };
 #[derive(Clone, Copy, PartialEq)]
 enum Point
@@ -112,11 +113,7 @@ fn main()
         stdout.flush().unwrap();
         loop
         {
-            let (x, y, _, restart) = read_input();
-            if restart
-            {
-                continue 'main;
-            }
+            let (x, y, _, _) = read_input(touch);
             if x < xb && y < yb
             {
                 for x in x.saturating_sub(1)..=(x + 1).min(xb - 1)
@@ -133,7 +130,7 @@ fn main()
         }
         loop
         {
-            let (x, y, mb, restart) = read_input();
+            let (x, y, mb, restart) = read_input(touch);
             if restart
             {
                 continue 'main;
@@ -375,39 +372,89 @@ fn clear(
         );
     }
 }
-fn read_input() -> (usize, usize, MouseButton, bool)
+fn read_input(touch: bool) -> (usize, usize, MouseButton, bool)
 {
-    loop
+    if touch
     {
-        match event::read().unwrap()
+        loop
         {
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
-                ..
-            }) =>
+            match event::read().unwrap()
             {
-                terminal::disable_raw_mode().unwrap();
-                stdout().execute(cursor::Show).unwrap();
-                stdout().execute(event::DisableMouseCapture).unwrap();
-                stdout().execute(terminal::LeaveAlternateScreen).unwrap();
-                exit(0);
+                Event::Mouse(MouseEvent {
+                    kind: MouseEventKind::Down(MouseButton::Left),
+                    ..
+                }) =>
+                {
+                    let timer = Instant::now();
+                    loop
+                    {
+                        match event::read().unwrap()
+                        {
+                            Event::Mouse(MouseEvent {
+                                kind: MouseEventKind::Up(MouseButton::Left),
+                                column,
+                                row,
+                                ..
+                            }) =>
+                            {
+                                return (
+                                    column as usize / 3,
+                                    row as usize,
+                                    if timer.elapsed().as_millis() > 100
+                                    {
+                                        MouseButton::Right
+                                    }
+                                    else
+                                    {
+                                        MouseButton::Left
+                                    },
+                                    false,
+                                );
+                            }
+                            _ =>
+                            {}
+                        }
+                    }
+                }
+                _ =>
+                {}
             }
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('r'),
-                ..
-            }) => return (0, 0, MouseButton::Left, true),
-            Event::Mouse(MouseEvent {
-                kind: MouseEventKind::Down(kind),
-                column,
-                row,
-                ..
-            }) =>
+        }
+    }
+    else
+    {
+        loop
+        {
+            match event::read().unwrap()
             {
-                return (column as usize / 3, row as usize, kind, false);
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char('c'),
+                    modifiers: KeyModifiers::CONTROL,
+                    ..
+                }) =>
+                {
+                    terminal::disable_raw_mode().unwrap();
+                    stdout().execute(cursor::Show).unwrap();
+                    stdout().execute(event::DisableMouseCapture).unwrap();
+                    stdout().execute(terminal::LeaveAlternateScreen).unwrap();
+                    exit(0);
+                }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char('r'),
+                    ..
+                }) => return (0, 0, MouseButton::Left, true),
+                Event::Mouse(MouseEvent {
+                    kind: MouseEventKind::Down(kind),
+                    column,
+                    row,
+                    ..
+                }) =>
+                {
+                    return (column as usize / 3, row as usize, kind, false);
+                }
+                _ =>
+                {}
             }
-            _ =>
-            {}
         }
     }
 }
