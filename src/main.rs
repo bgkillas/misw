@@ -27,149 +27,148 @@ fn main()
     stdout.execute(cursor::Hide).unwrap();
     stdout.execute(event::EnableMouseCapture).unwrap();
     stdout.execute(terminal::EnterAlternateScreen).unwrap();
-    print!("\x1b[H\x1b[J");
-    let xb = 32;
-    let yb = 32;
-    let mut board = vec![vec![Point::Close; yb]; xb];
-    let bombs = 256;
+    let xb = 16;
+    let yb = 16;
+    let bombs = 64;
     let min = u64::MAX / ((xb * yb) as u64 / bombs);
-    for row in board.iter_mut()
-    {
-        for point in row.iter_mut()
-        {
-            if min > fastrand::u64(..)
-            {
-                *point = Point::Bomb;
-            }
-            print!("#");
-        }
-        println!("\x1b[G")
-    }
     loop
     {
-        let (x, y, _) = read_input();
-        if x <= xb && y <= yb
+        print!("\x1b[H\x1b[J");
+        let mut board = vec![vec![Point::Close; yb]; xb];
+        for row in board.iter_mut()
         {
-            for x in x.saturating_sub(1)..=(x + 1).min(xb)
+            for point in row.iter_mut()
             {
-                for y in y.saturating_sub(1)..=(y + 1).min(yb)
+                if min > fastrand::u64(..)
                 {
-                    board[x][y] = Point::Open;
+                    *point = Point::Bomb;
                 }
+                print!(" # ");
             }
-            clear(&mut board, x, y, xb, yb, &mut Vec::new());
-            stdout.flush().unwrap();
-            break;
+            println!("\x1b[G")
         }
-    }
-    loop
-    {
-        let (x, y, mb) = read_input();
-        if x <= xb && y <= yb
+        loop
         {
-            match mb
+            let (x, y, _) = read_input();
+            if x <= xb && y <= yb
             {
-                MouseButton::Middle if board[x][y] == Point::Open =>
+                for x in x.saturating_sub(1)..=(x + 1).min(xb)
                 {
-                    let mut flags = 0;
-                    let mut bombs = 0;
-                    for board in &board[x.saturating_sub(1)..=(x + 1).min(xb - 1)]
+                    for y in y.saturating_sub(1)..=(y + 1).min(yb)
                     {
-                        for i in &board[y.saturating_sub(1)..=(y + 1).min(yb - 1)]
-                        {
-                            if *i == Point::Bomb
-                            {
-                                bombs += 1;
-                            }
-                            else if *i == Point::Flag
-                            {
-                                flags += 1;
-                            }
-                        }
+                        board[x][y] = Point::Open;
                     }
-                    if flags == bombs
+                }
+                clear(&mut board, x, y, xb, yb, &mut Vec::new());
+                stdout.flush().unwrap();
+                break;
+            }
+        }
+        loop
+        {
+            let (x, y, mb) = read_input();
+            if x <= xb && y <= yb
+            {
+                match mb
+                {
+                    MouseButton::Middle if board[x][y] == Point::Open =>
                     {
-                        if bombs > 0
+                        let mut flags = 0;
+                        let mut bombs = 0;
+                        for board in &board[x.saturating_sub(1)..=(x + 1).min(xb - 1)]
                         {
-                            break;
-                        }
-                        for x in x.saturating_sub(1)..=(x + 1).min(xb - 1)
-                        {
-                            for y in y.saturating_sub(1)..=(y + 1).min(yb - 1)
+                            for i in &board[y.saturating_sub(1)..=(y + 1).min(yb - 1)]
                             {
-                                if board[x][y] != Point::BombFlag
+                                if *i == Point::Bomb
                                 {
-                                    clear(&mut board, x, y, xb, yb, &mut Vec::new())
+                                    bombs += 1;
+                                }
+                                else if *i == Point::Flag
+                                {
+                                    flags += 1;
                                 }
                             }
                         }
+                        if flags == bombs
+                        {
+                            if bombs > 0
+                            {
+                                break;
+                            }
+                            for x in x.saturating_sub(1)..=(x + 1).min(xb - 1)
+                            {
+                                for y in y.saturating_sub(1)..=(y + 1).min(yb - 1)
+                                {
+                                    if board[x][y] != Point::BombFlag
+                                    {
+                                        clear(&mut board, x, y, xb, yb, &mut Vec::new())
+                                    }
+                                }
+                            }
+                        }
+                        stdout.flush().unwrap();
                     }
-                    stdout.flush().unwrap();
+                    MouseButton::Right => match board[x][y]
+                    {
+                        Point::Bomb =>
+                        {
+                            board[x][y] = Point::BombFlag;
+                            flag(x, y);
+                            stdout.flush().unwrap();
+                        }
+                        Point::Close =>
+                        {
+                            board[x][y] = Point::Flag;
+                            flag(x, y);
+                            stdout.flush().unwrap();
+                        }
+                        Point::Flag =>
+                        {
+                            board[x][y] = Point::Close;
+                            unflag(x, y);
+                            stdout.flush().unwrap();
+                        }
+                        Point::BombFlag =>
+                        {
+                            board[x][y] = Point::Bomb;
+                            unflag(x, y);
+                            stdout.flush().unwrap();
+                        }
+                        _ =>
+                        {}
+                    },
+                    MouseButton::Left => match board[x][y]
+                    {
+                        Point::Bomb =>
+                        {
+                            break;
+                        }
+                        Point::Close =>
+                        {
+                            clear(&mut board, x, y, xb, yb, &mut Vec::new());
+                            stdout.flush().unwrap()
+                        }
+                        _ =>
+                        {}
+                    },
+                    _ =>
+                    {}
                 }
-                MouseButton::Right => match board[x][y]
-                {
-                    Point::Bomb =>
-                    {
-                        board[x][y] = Point::BombFlag;
-                        flag(x, y);
-                        stdout.flush().unwrap();
-                    }
-                    Point::Close =>
-                    {
-                        board[x][y] = Point::Flag;
-                        flag(x, y);
-                        stdout.flush().unwrap();
-                    }
-                    Point::Flag =>
-                    {
-                        board[x][y] = Point::Close;
-                        unflag(x, y);
-                        stdout.flush().unwrap();
-                    }
-                    Point::BombFlag =>
-                    {
-                        board[x][y] = Point::Bomb;
-                        unflag(x, y);
-                        stdout.flush().unwrap();
-                    }
-                    _ =>
-                    {}
-                },
-                MouseButton::Left => match board[x][y]
-                {
-                    Point::Bomb =>
-                    {
-                        break;
-                    }
-                    Point::Close =>
-                    {
-                        clear(&mut board, x, y, xb, yb, &mut Vec::new());
-                        stdout.flush().unwrap()
-                    }
-                    _ =>
-                    {}
-                },
-                _ =>
-                {}
             }
         }
     }
-    terminal::disable_raw_mode().unwrap();
-    stdout.execute(cursor::Show).unwrap();
-    stdout.execute(event::DisableMouseCapture).unwrap();
-    stdout.execute(terminal::LeaveAlternateScreen).unwrap();
 }
 fn flag(x: usize, y: usize)
 {
     print!(
-        "\x1b[H{}{}@",
+        "\x1b[H{}{} @ ",
         if x == 0
         {
             String::new()
         }
         else
         {
-            "\x1b[".to_owned() + &x.to_string() + "C"
+            "\x1b[".to_owned() + &(x * 3).to_string() + "C"
         },
         if y == 0
         {
@@ -184,14 +183,14 @@ fn flag(x: usize, y: usize)
 fn unflag(x: usize, y: usize)
 {
     print!(
-        "\x1b[H{}{}#",
+        "\x1b[H{}{} # ",
         if x == 0
         {
             String::new()
         }
         else
         {
-            "\x1b[".to_owned() + &x.to_string() + "C"
+            "\x1b[".to_owned() + &(x * 3).to_string() + "C"
         },
         if y == 0
         {
@@ -227,14 +226,14 @@ fn clear(
     if sum == 0
     {
         print!(
-            "\x1b[H{}{} ",
+            "\x1b[H{}{}   ",
             if x == 0
             {
                 String::new()
             }
             else
             {
-                "\x1b[".to_owned() + &x.to_string() + "C"
+                "\x1b[".to_owned() + &(x * 3).to_string() + "C"
             },
             if y == 0
             {
@@ -260,14 +259,14 @@ fn clear(
     else
     {
         print!(
-            "\x1b[H{}{}{}",
+            "\x1b[H{}{} {} ",
             if x == 0
             {
                 String::new()
             }
             else
             {
-                "\x1b[".to_owned() + &x.to_string() + "C"
+                "\x1b[".to_owned() + &(x * 3).to_string() + "C"
             },
             if y == 0
             {
@@ -306,7 +305,7 @@ fn read_input() -> (usize, usize, MouseButton)
                 ..
             }) =>
             {
-                return (column as usize, row as usize, kind);
+                return (column as usize / 3, row as usize, kind);
             }
             _ =>
             {}
