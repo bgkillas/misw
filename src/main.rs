@@ -53,14 +53,15 @@ fn main()
         }
         else
         {
-            args[1].parse::<usize>().unwrap_or(4)
+            args[2].parse::<usize>().unwrap_or(4)
         };
     let min = u64::MAX / ((xb * yb) as u64 / bombs as u64);
-    loop
+    'main: loop
     {
         print!("\x1b[H\x1b[J");
         let mut board = vec![vec![Point::Close; yb]; xb];
         let mut xcount = 0;
+        let mut even = false;
         for row in board.iter_mut()
         {
             for point in row.iter_mut()
@@ -69,10 +70,23 @@ fn main()
                 {
                     *point = Point::Bomb;
                 }
-                print!(" # ");
+                if even
+                {
+                    even = false;
+                    print!("\x1b[46m   \x1b[0m");
+                }
+                else
+                {
+                    even = true;
+                    print!("\x1b[106m   \x1b[0m");
+                }
                 xcount += 1;
                 if xcount == xb
                 {
+                    if xb % 2 == 0
+                    {
+                        even = !even;
+                    }
                     print!("\x1b[B\x1b[G");
                     xcount = 0;
                 }
@@ -81,7 +95,11 @@ fn main()
         stdout.flush().unwrap();
         loop
         {
-            let (x, y, _) = read_input();
+            let (x, y, _, restart) = read_input();
+            if restart
+            {
+                continue 'main;
+            }
             if x < xb && y < yb
             {
                 for x in x.saturating_sub(1)..=(x + 1).min(xb - 1)
@@ -98,7 +116,11 @@ fn main()
         }
         loop
         {
-            let (x, y, mb) = read_input();
+            let (x, y, mb, restart) = read_input();
+            if restart
+            {
+                continue 'main;
+            }
             if x < xb && y < yb
             {
                 match mb
@@ -193,7 +215,7 @@ fn main()
 fn flag(x: usize, y: usize)
 {
     print!(
-        "\x1b[H{}{} @ ",
+        "\x1b[H{}{}\x1b[41m   \x1b[0m",
         if x == 0
         {
             String::new()
@@ -215,7 +237,7 @@ fn flag(x: usize, y: usize)
 fn unflag(x: usize, y: usize)
 {
     print!(
-        "\x1b[H{}{} # ",
+        "\x1b[H{}{}{}",
         if x == 0
         {
             String::new()
@@ -232,6 +254,14 @@ fn unflag(x: usize, y: usize)
         {
             "\x1b[".to_owned() + &y.to_string() + "B"
         },
+        if (y % 2 == 0) == (x % 2 == 0)
+        {
+            "\x1b[106m   \x1b[0m"
+        }
+        else
+        {
+            "\x1b[46m   \x1b[0m"
+        }
     );
 }
 fn clear(
@@ -258,7 +288,7 @@ fn clear(
     if sum == 0
     {
         print!(
-            "\x1b[H{}{}   ",
+            "\x1b[H{}{}{}",
             if x == 0
             {
                 String::new()
@@ -275,6 +305,14 @@ fn clear(
             {
                 "\x1b[".to_owned() + &y.to_string() + "B"
             },
+            if (y % 2 == 0) == (x % 2 == 0)
+            {
+                "\x1b[105m   \x1b[0m"
+            }
+            else
+            {
+                "\x1b[45m   \x1b[0m"
+            }
         );
         blacklist.push((x, y));
         for x in x.saturating_sub(1)..=(x + 1).min(xb - 1)
@@ -291,7 +329,7 @@ fn clear(
     else
     {
         print!(
-            "\x1b[H{}{} {} ",
+            "\x1b[H{}{}{} {} \x1b[0m",
             if x == 0
             {
                 String::new()
@@ -308,11 +346,19 @@ fn clear(
             {
                 "\x1b[".to_owned() + &y.to_string() + "B"
             },
+            if (y % 2 == 0) == (x % 2 == 0)
+            {
+                "\x1b[105m"
+            }
+            else
+            {
+                "\x1b[45m"
+            },
             sum
         );
     }
 }
-fn read_input() -> (usize, usize, MouseButton)
+fn read_input() -> (usize, usize, MouseButton, bool)
 {
     loop
     {
@@ -330,6 +376,10 @@ fn read_input() -> (usize, usize, MouseButton)
                 stdout().execute(terminal::LeaveAlternateScreen).unwrap();
                 exit(0);
             }
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('r'),
+                ..
+            }) => return (0, 0, MouseButton::Left, true),
             Event::Mouse(MouseEvent {
                 kind: MouseEventKind::Down(kind),
                 column,
@@ -337,7 +387,7 @@ fn read_input() -> (usize, usize, MouseButton)
                 ..
             }) =>
             {
-                return (column as usize / 3, row as usize, kind);
+                return (column as usize / 3, row as usize, kind, false);
             }
             _ =>
             {}
