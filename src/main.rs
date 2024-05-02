@@ -57,13 +57,7 @@ fn main()
                     board[x][y] = Point::Open;
                 }
             }
-            for x in x.saturating_sub(1)..=(x + 1).min(xb)
-            {
-                for y in y.saturating_sub(1)..=(y + 1).min(yb)
-                {
-                    clear(&board, x, y, xb, yb)
-                }
-            }
+            clear(&mut board, x, y, xb, yb, &mut Vec::new());
             stdout.flush().unwrap();
             break;
         }
@@ -79,9 +73,9 @@ fn main()
                 {
                     let mut flags = 0;
                     let mut bombs = 0;
-                    for board in &board[x.saturating_sub(1)..=(x + 1).min(xb)]
+                    for board in &board[x.saturating_sub(1)..=(x + 1).min(xb - 1)]
                     {
-                        for i in &board[y.saturating_sub(1)..=(y + 1).min(yb)]
+                        for i in &board[y.saturating_sub(1)..=(y + 1).min(yb - 1)]
                         {
                             if *i == Point::Bomb
                             {
@@ -99,14 +93,13 @@ fn main()
                         {
                             break;
                         }
-                        for x in x.saturating_sub(1)..=(x + 1).min(xb)
+                        for x in x.saturating_sub(1)..=(x + 1).min(xb - 1)
                         {
-                            for y in y.saturating_sub(1)..=(y + 1).min(yb)
+                            for y in y.saturating_sub(1)..=(y + 1).min(yb - 1)
                             {
                                 if board[x][y] != Point::BombFlag
                                 {
-                                    board[x][y] = Point::Open;
-                                    clear(&board, x, y, xb, yb)
+                                    clear(&mut board, x, y, xb, yb, &mut Vec::new())
                                 }
                             }
                         }
@@ -150,8 +143,7 @@ fn main()
                     }
                     Point::Close =>
                     {
-                        board[x][y] = Point::Open;
-                        clear(&board, x, y, xb, yb);
+                        clear(&mut board, x, y, xb, yb, &mut Vec::new());
                         stdout.flush().unwrap()
                     }
                     _ =>
@@ -211,12 +203,20 @@ fn unflag(x: usize, y: usize)
         },
     );
 }
-fn clear(board: &[Vec<Point>], x: usize, y: usize, xb: usize, yb: usize)
+fn clear(
+    board: &mut Vec<Vec<Point>>,
+    x: usize,
+    y: usize,
+    xb: usize,
+    yb: usize,
+    blacklist: &mut Vec<(usize, usize)>,
+)
 {
+    board[x][y] = Point::Open;
     let mut sum = 0;
-    for board in &board[x.saturating_sub(1)..=(x + 1).min(xb)]
+    for board in &board[x.saturating_sub(1)..=(x + 1).min(xb - 1)]
     {
-        for i in &board[y.saturating_sub(1)..=(y + 1).min(yb)]
+        for i in &board[y.saturating_sub(1)..=(y + 1).min(yb - 1)]
         {
             if *i == Point::Bomb || *i == Point::BombFlag
             {
@@ -245,6 +245,17 @@ fn clear(board: &[Vec<Point>], x: usize, y: usize, xb: usize, yb: usize)
                 "\x1b[".to_owned() + &y.to_string() + "B"
             },
         );
+        blacklist.push((x, y));
+        for x in x.saturating_sub(1)..=(x + 1).min(xb - 1)
+        {
+            for y in y.saturating_sub(1)..=(y + 1).min(yb - 1)
+            {
+                if !blacklist.iter().any(|b| b.0 == x && b.1 == y)
+                {
+                    clear(board, x, y, xb, yb, blacklist);
+                }
+            }
+        }
     }
     else
     {
