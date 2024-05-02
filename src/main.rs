@@ -60,7 +60,7 @@ fn main()
     {
         print!("\x1b[H\x1b[J");
         let mut board = vec![vec![Point::Close; yb]; xb];
-        let mut count = 0;
+        let mut xcount = 0;
         for row in board.iter_mut()
         {
             for point in row.iter_mut()
@@ -70,11 +70,11 @@ fn main()
                     *point = Point::Bomb;
                 }
                 print!(" # ");
-                count += 1;
-                if count == xb
+                xcount += 1;
+                if xcount == xb
                 {
-                    println!("\x1b[G");
-                    count = 0;
+                    print!("\x1b[B\x1b[G");
+                    xcount = 0;
                 }
             }
         }
