@@ -229,7 +229,7 @@ fn main()
 fn flag(x: usize, y: usize)
 {
     print!(
-        "\x1b[H{}{}\x1b[41m   \x1b[0m",
+        "\x1b[H{}{}{}",
         if x == 0
         {
             String::new()
@@ -246,6 +246,14 @@ fn flag(x: usize, y: usize)
         {
             "\x1b[".to_owned() + &y.to_string() + "B"
         },
+        if (y % 2 == 0) == (x % 2 == 0)
+        {
+            "\x1b[101m   \x1b[0m"
+        }
+        else
+        {
+            "\x1b[41m   \x1b[0m"
+        }
     );
 }
 fn unflag(x: usize, y: usize)
@@ -381,7 +389,11 @@ fn read_input(touch: bool) -> (usize, usize, MouseButton, bool)
             match event::read().unwrap()
             {
                 Event::Mouse(MouseEvent {
-                    kind: MouseEventKind::Down(MouseButton::Left),
+                    kind: MouseEventKind::Down(_),
+                    ..
+                })
+                | Event::Mouse(MouseEvent {
+                    kind: MouseEventKind::Drag(_),
                     ..
                 }) =>
                 {
@@ -391,7 +403,7 @@ fn read_input(touch: bool) -> (usize, usize, MouseButton, bool)
                         match event::read().unwrap()
                         {
                             Event::Mouse(MouseEvent {
-                                kind: MouseEventKind::Up(MouseButton::Left),
+                                kind: MouseEventKind::Up(_),
                                 column,
                                 row,
                                 ..
