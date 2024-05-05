@@ -216,6 +216,43 @@ fn main()
                             clear(&mut board, x, y, xb, yb, &mut Vec::new());
                             stdout.flush().unwrap()
                         }
+                        Point::Open =>
+                        {
+                            let mut flags = 0;
+                            let mut bombs = 0;
+                            for board in &board[x.saturating_sub(1)..=(x + 1).min(xb - 1)]
+                            {
+                                for i in &board[y.saturating_sub(1)..=(y + 1).min(yb - 1)]
+                                {
+                                    if *i == Point::Bomb
+                                    {
+                                        bombs += 1;
+                                    }
+                                    else if *i == Point::Flag
+                                    {
+                                        flags += 1;
+                                    }
+                                }
+                            }
+                            if flags == bombs
+                            {
+                                if bombs > 0
+                                {
+                                    break;
+                                }
+                                for x in x.saturating_sub(1)..=(x + 1).min(xb - 1)
+                                {
+                                    for y in y.saturating_sub(1)..=(y + 1).min(yb - 1)
+                                    {
+                                        if board[x][y] != Point::BombFlag
+                                        {
+                                            clear(&mut board, x, y, xb, yb, &mut Vec::new())
+                                        }
+                                    }
+                                }
+                            }
+                            stdout.flush().unwrap();
+                        }
                         _ =>
                         {}
                     },
