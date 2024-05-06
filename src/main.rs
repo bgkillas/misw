@@ -7,6 +7,7 @@ use crossterm::{
     event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind},
     terminal, ExecutableCommand,
 };
+use libc::{ioctl, winsize, STDOUT_FILENO, TIOCGWINSZ};
 use std::{
     env::args,
     io::{stdout, Write},
@@ -42,7 +43,7 @@ fn main()
     }
     else if args[0] == "max"
     {
-        termsize::get().unwrap().cols as usize / 3
+        get_terminal_dimensions().0 / 3
     }
     else
     {
@@ -50,7 +51,7 @@ fn main()
     };
     let yb = if !args.is_empty() && args[0] == "max"
     {
-        termsize::get().unwrap().rows as usize
+        get_terminal_dimensions().1
     }
     else if args.len() <= 1
     {
@@ -73,6 +74,7 @@ fn main()
         {
             args[2].parse::<usize>().unwrap_or(4)
         };
+    println!("{} {} {}", xb, yb, bombs);
     let min = u64::MAX / ((xb * yb) as u64 / bombs as u64);
     'main: loop
     {
@@ -504,6 +506,20 @@ fn read_input(touch: bool) -> (usize, usize, MouseButton, bool)
                 _ =>
                 {}
             }
+        }
+    }
+}
+pub fn get_terminal_dimensions() -> (usize, usize)
+{
+    unsafe {
+        let mut size: winsize = std::mem::zeroed();
+        if ioctl(STDOUT_FILENO, TIOCGWINSZ, &mut size) == 0 && size.ws_col != 0
+        {
+            (size.ws_col as usize, size.ws_row as usize)
+        }
+        else
+        {
+            (80, 80)
         }
     }
 }
