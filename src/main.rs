@@ -1,7 +1,3 @@
-//for touch maybe only support left click, click numbers to remove sorrounding space besides first touch, click unknown for flag, maybe * for flag
-//make menu for deciding starting conditions
-//timer
-//100 by 80 max, maybe calculate max
 use crossterm::{
     cursor, event,
     event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind},
@@ -78,7 +74,6 @@ fn main()
     let min = u64::MAX / ((xb * yb) as u64 / bombs as u64);
     'main: loop
     {
-        let timer = Instant::now();
         print!("\x1b[H\x1b[J");
         let mut board = vec![vec![Point::Close; yb]; xb];
         let mut xcount = 0;
@@ -116,18 +111,23 @@ fn main()
                 }
             }
         }
-        print_info(timer, flags, rbombs);
+        let timer;
         stdout.flush().unwrap();
         loop
         {
             let (x, y, _, _) = read_input(touch);
             if x < xb && y < yb
             {
+                timer = Instant::now();
                 for x in x.saturating_sub(1)..=(x + 1).min(xb - 1)
                 {
                     for y in y.saturating_sub(1)..=(y + 1).min(yb - 1)
                     {
-                        board[x][y] = Point::Open;
+                        if board[x][y] == Point::Bomb
+                        {
+                            board[x][y] = Point::Open;
+                            rbombs -= 1;
+                        }
                     }
                 }
                 clear(&mut board, x, y, xb, yb, &mut Vec::new());
@@ -135,10 +135,11 @@ fn main()
                 break;
             }
         }
+        print_info(timer, flags, rbombs);
+        stdout.flush().unwrap();
         loop
         {
             let (x, y, mb, restart) = read_input(touch);
-            stdout.flush().unwrap();
             if restart
             {
                 continue 'main;
