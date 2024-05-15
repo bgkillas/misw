@@ -51,7 +51,7 @@ fn main()
     };
     let yb = if !args.is_empty() && args[0] == "max"
     {
-        get_terminal_dimensions().1
+        get_terminal_dimensions().1 - 1
     }
     else if args.len() <= 1
     {
@@ -78,10 +78,13 @@ fn main()
     let min = u64::MAX / ((xb * yb) as u64 / bombs as u64);
     'main: loop
     {
+        let timer = Instant::now();
         print!("\x1b[H\x1b[J");
         let mut board = vec![vec![Point::Close; yb]; xb];
         let mut xcount = 0;
         let mut even = false;
+        let mut rbombs = 0;
+        let mut flags = 0;
         for row in board.iter_mut()
         {
             for point in row.iter_mut()
@@ -89,6 +92,7 @@ fn main()
                 if min > fastrand::u64(..)
                 {
                     *point = Point::Bomb;
+                    rbombs += 1;
                 }
                 if even
                 {
@@ -112,6 +116,7 @@ fn main()
                 }
             }
         }
+        print_info(timer, flags, rbombs);
         stdout.flush().unwrap();
         loop
         {
@@ -133,6 +138,7 @@ fn main()
         loop
         {
             let (x, y, mb, restart) = read_input(touch);
+            stdout.flush().unwrap();
             if restart
             {
                 continue 'main;
@@ -183,24 +189,28 @@ fn main()
                         Point::Bomb =>
                         {
                             board[x][y] = Point::BombFlag;
+                            flags += 1;
                             flag(x, y);
                             stdout.flush().unwrap();
                         }
                         Point::Close =>
                         {
                             board[x][y] = Point::Flag;
+                            flags += 1;
                             flag(x, y);
                             stdout.flush().unwrap();
                         }
                         Point::Flag =>
                         {
                             board[x][y] = Point::Close;
+                            flags -= 1;
                             unflag(x, y);
                             stdout.flush().unwrap();
                         }
                         Point::BombFlag =>
                         {
                             board[x][y] = Point::Bomb;
+                            flags -= 1;
                             unflag(x, y);
                             stdout.flush().unwrap();
                         }
@@ -262,6 +272,8 @@ fn main()
                     {}
                 }
             }
+            print_info(timer, flags, rbombs);
+            stdout.flush().unwrap();
         }
     }
 }
@@ -418,6 +430,17 @@ fn clear(
             sum
         );
     }
+}
+fn print_info(timer: Instant, flags: usize, bombs: usize)
+{
+    print!(
+        "\x1b[{}B\x1b[G{:02}:{:02}\t{}/{}",
+        get_terminal_dimensions().1,
+        timer.elapsed().as_secs() / 60,
+        timer.elapsed().as_secs() % 60,
+        flags,
+        bombs
+    );
 }
 fn read_input(touch: bool) -> (usize, usize, MouseButton, bool)
 {
