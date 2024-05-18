@@ -1,3 +1,9 @@
+//3 layer 3d minesweeper with each layer taking a space in the 3x1 square with superscript and subscript
+//⁰¹²³⁴⁵⁶⁷⁸⁹
+//₀₁₂₃₄₅₆₇₈₉
+//maybe just hexadecimal, bottom infobar would have to show depth
+//show mines on win/loss as *
+//
 use crossterm::{
     cursor, event,
     event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind},
@@ -275,7 +281,68 @@ fn main()
             }
             print_info(timer, flags, rbombs);
             stdout.flush().unwrap();
+            if !board.iter().any(|a| a.iter().any(|p| *p == Point::Close))
+            {
+                break;
+            }
         }
+        print!("\x1b[H");
+        let mut even = false;
+        for y in 0..board[0].len()
+        {
+            for x in 0..board.len()
+            {
+                let point = board[x][y];
+                if matches!(point, Point::Open)
+                {
+                    print!("\x1b[3C");
+                }
+                else
+                {
+                    print!(
+                        "{} {} \x1b[0m",
+                        if even
+                        {
+                            if matches!(point, Point::Flag | Point::BombFlag)
+                            {
+                                "\x1b[41m"
+                            }
+                            else
+                            {
+                                "\x1b[46m"
+                            }
+                        }
+                        else
+                        {
+                            if matches!(point, Point::Flag | Point::BombFlag)
+                            {
+                                "\x1b[101m"
+                            }
+                            else
+                            {
+                                "\x1b[106m"
+                            }
+                        },
+                        if matches!(point, Point::Bomb | Point::BombFlag)
+                        {
+                            "*"
+                        }
+                        else
+                        {
+                            " "
+                        },
+                    );
+                }
+                even = !even;
+            }
+            if xb % 2 == 0
+            {
+                even = !even;
+            }
+            print!("\x1b[B\x1b[G");
+        }
+        stdout.flush().unwrap();
+        read_input(touch);
     }
 }
 fn flag(x: usize, y: usize)
