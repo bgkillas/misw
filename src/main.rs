@@ -63,21 +63,20 @@ fn main()
     {
         args[1].parse::<usize>().unwrap_or(16)
     };
-    let bombs = (xb * yb)
-        / if args.len() > 1 && args[0] == "max"
-        {
-            args[1].parse::<usize>().unwrap_or(4)
-        }
-        else if args.len() <= 2
-        {
-            4
-        }
-        else
-        {
-            args[2].parse::<usize>().unwrap_or(4)
-        };
+    let bombs = if args.len() > 1 && args[0] == "max"
+    {
+        args[1].parse::<f64>().unwrap_or(4.0)
+    }
+    else if args.len() <= 2
+    {
+        4.0
+    }
+    else
+    {
+        args[2].parse::<f64>().unwrap_or(4.0)
+    };
     println!("{} {} {}", xb, yb, bombs);
-    let min = u64::MAX / ((xb * yb) as u64 / bombs as u64);
+    let min = (u64::MAX as f64 / bombs) as u64;
     'main: loop
     {
         print!("\x1b[H\x1b[J");
@@ -279,13 +278,14 @@ fn main()
                     {}
                 }
             }
-            print_info(timer, flags, rbombs);
-            stdout.flush().unwrap();
             if !board.iter().any(|a| a.iter().any(|p| *p == Point::Close))
             {
                 break;
             }
+            print_info(timer, flags, rbombs);
+            stdout.flush().unwrap();
         }
+        print_info(timer, flags, rbombs);
         print!("\x1b[H");
         let mut even = false;
         for y in 0..board[0].len()
